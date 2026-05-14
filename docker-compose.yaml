@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  # Sehemu ya Database
+  db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_DATABASE: bodaboda_db
+      MYSQL_ROOT_PASSWORD: password123
+    ports:
+      - "3306:3306"
+
+  # Sehemu ya Web App (PHP yako)
+  web:
+    build: .
+    ports:
+      - "8080:80"
+    depends_on:
+      - db

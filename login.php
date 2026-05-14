@@ -25,7 +25,7 @@ $texts = [
         'btn_signup' => 'Create Account',
         'role_cust' => 'Customer',
         'role_rider' => 'Rider',
-        'role_admin' => 'Administrator',
+        // 'role_admin' => 'Administrator',
         'error' => 'Invalid Username or Password!',
         'success' => 'Registration Successful! Please Login.'
     ],
@@ -174,7 +174,9 @@ if(isset($_POST['signup'])){
             <select name="role">
                 <option value="customer"><?php echo $t['role_cust']; ?></option>
                 <option value="rider"><?php echo $t['role_rider']; ?></option>
-                <option value="admin"><?php echo $t['role_admin']; ?></option>
+                <!-- <option value="admin"> -->
+                    <!-- <?php echo $t['role_admin']; ?>  -->
+                <!-- </option> -->
             </select>
         </div>
         <div class="form-group">
