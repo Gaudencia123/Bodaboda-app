@@ -1,34 +1,89 @@
-name: CI Pipeline - Bodaboda App
+name: CI/CD Pipeline - Bodaboda App
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
     branches: [ main ]
 
 jobs:
   test-and-build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
 
-      - name: Start app for testing
+      - name: Run tests
         run: |
           php -S localhost:80 -t app/ &
           sleep 3
-
-      - name: Run tests
-        run: php tests/test_app.php
+          php tests/test_app.php
 
       - name: Build Docker image
-        run: docker build -t bodaboda-app:latest .
+        run: |
+          docker build -t bodaboda-app:latest .
+          docker tag bodaboda-app:latest bodaboda-app:v1
 
-      - name: Tag Docker image
-        run: docker tag bodaboda-app:latest bodaboda-app:v1
+      - name: Save Docker image
+        run: docker save bodaboda-app:latest > bodaboda-image.tar
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: docker-image
+          path: bodaboda-image.tar
+
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: test-and-build
+    steps:
+      - name: Download image artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: docker-image
+
+      - name: Deploy to Staging
+        run: |
+          docker load < bodaboda-image.tar
+          docker stop bodaboda-staging || true
+          docker rm bodaboda-staging || true
+          docker run -d -p 8081:80 --name bodaboda-staging bodaboda-app:latest
+          echo "Staging running on port 8081"
+
+      - name: Verify staging
+        run: |
+          sleep 5
+          curl -f http://localhost:8081 && echo "Staging OK"
+
+  approval:
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    environment:
+      name: production
+    steps:
+      - name: Awaiting Release Manager Approval
+        run: echo "Approval granted. Proceeding to production..."
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: approval
+    steps:
+      - name: Download image artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: docker-image
+
+      - name: Deploy to Production
+        run: |
+          docker load < bodaboda-image.tar
+          docker stop bodaboda-prod || true
+          docker rm bodaboda-prod || true
+          docker run -d -p 80:80 --name bodaboda-prod bodaboda-app:latest
+          echo "Production running on port 80"
+
+      - name: Verify production
+        run: |
+          sleep 5
+          curl -f http://localhost && echo "Production OK"
